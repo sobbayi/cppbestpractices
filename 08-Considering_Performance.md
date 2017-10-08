@@ -39,12 +39,19 @@ Templates are not free to instantiate. Instantiating many templates, or template
 
 For more examples see [this article](http://blog2.emptycrate.com/content/template-code-bloat-revisited-smaller-makeshared).
 
+### Avoid Recursive Template Instantiations
+
+Recursive template instantiations can result in a significant load on the compiler and more difficult to understand code. 
+
+[Consider using variadic expansions and folds when possible instead.](http://articles.emptycrate.com/2016/05/14/folds_in_cpp11_ish.html)
 
 ### Analyze the Build
 
 The tool [Templight](https://github.com/mikael-s-persson/templight) can be used to analyze the build time of your project. It takes some effort to get built, but once you do, it's a drop in replacement for clang++.
 
 After you build using Templight, you will need to analyze the results. The [templight-tools](https://github.com/mikael-s-persson/templight-tools) project provides various methods. (Author's Note: I suggest using the callgrind converter and visualizing the results with kcachegrind).
+
+
 
 ### Firewall Frequently Changing Header Files
 
@@ -54,13 +61,23 @@ After you build using Templight, you will need to analyze the results. The [temp
 
 The compiler has to do something with each include directive it sees. Even if it stops as soon as it seems the `#ifndef` include guard, it still had to open the file and begin processing it.
 
-[include-what-you-use](https://code.google.com/p/include-what-you-use) is a tool that can help you identify which headers you need.
+[include-what-you-use](https://github.com/include-what-you-use/include-what-you-use) is a tool that can help you identify which headers you need.
 
 #### Reduce the load on the preprocessor
 
 This is a general form of "Firewall Frequently Changing Header Files" and "Don't Unnecessarily Include Headers." Tools like BOOST_PP can be very helpful, but they also put a huge burden on the preprocessor.
 
 ### Consider using precompiled headers
+
+The usage of precompiled headers can considerably reduce the compile time in large projects. Selected headers are compiled to an intermediate form (PCH files) that can be faster processed by the compiler. It is recommended to define only frequently used header that changes rarely as precompiled header (e.g. system and library headers) to achieve the compile time reduction.
+But you have to keep in mind, that using precompiled headers has several disadvantages:
+* The usage of precompiled header is not portable.
+* The generated PCH files are machine dependent.
+* The generated PCH files can be quite large.
+* It can break your header dependencies. Because of the precompiled headers, every file has the possibility to include every header that is marked as a precompiled header. In result it can happen, that the build fails if you disable the precompiled headers. This can be an issue if you ship something like a library. Because of this it is highly recommend to build once with precompiled header enabled and a second time without them.
+
+Precompiled headers is supported by the most common compiler, like [GCC](https://gcc.gnu.org/onlinedocs/gcc/Precompiled-Headers.html), [Clang](http://clang.llvm.org/docs/PCHInternals.html) and [Visual Studio](https://msdn.microsoft.com/en-us/library/szfdksca.aspx).
+Tools like [cotire](https://github.com/sakra/cotire/) (a plugin for cmake) can help you to add precompiled headers to your build system.
 
 ### Consider Using Tools
 
@@ -162,7 +179,7 @@ if (caseA) {
 
 ```cpp
 // Better Idea
-const std::string somevalue = caseA?"Value A":"Value B";
+const std::string somevalue = caseA ? "Value A" : "Value B";
 ```
 
 More complex cases can be facilitated with an [immediately-invoked lambda](http://blog2.emptycrate.com/content/complex-object-initialization-optimization-iife-c11).
@@ -255,10 +272,15 @@ for (int i = 0; i < 15; ++i)
 // obj is still taking up memory for no reason
 ```
 
-### Prefer `double` to `float`
+[This topic has an associated discussion thread](https://github.com/lefticus/cppbestpractices/issues/52).
 
-Operations on `double`s are typically faster than `float`s. However, in vectorized operations, `float` might win out. Analyze the code and find out which is faster for your application!
+### Prefer `double` to `float`, But Test First
 
+Depending on the situation and the compiler's ability to optimize, one may be faster over the other. Choosing `float` will result in lower precision and may be slower due to conversions. On vectorizable operations `float` may be faster if you are able to sacrifice precision. 
+
+`double` is the recomended default choice as it is the default type for floating point values in C++.
+
+See this [stackoverflow](http://stackoverflow.com/questions/4584637/double-or-float-which-is-faster) discussion for some more information. 
 
 ### Prefer `++i` to `i++`
 ... when it is semantically correct. Pre-increment is [faster](http://blog2.emptycrate.com/content/why-i-faster-i-c) than post-increment because it does not require a copy of the object to be made.
@@ -294,3 +316,18 @@ std::cout << someThing() << '\n';
 This is very minor, but a `"\n"` has to be parsed by the compiler as a `const char *` which has to do a range check for `\0` when writing it to the stream (or appending to a string). A '\n' is known to be a single character and avoids many CPU instructions.
 
 If used inefficiently very many times it might have an impact on your performance, but more importantly thinking about these two usage cases gets you thinking more about what the compiler and runtime has to do to execute your code.
+
+
+### Never Use `std::bind`
+
+`std::bind` is almost always way more overhead (both compile time and runtime) than you need. Instead simply use a lambda.
+
+```cpp
+// Bad Idea
+auto f = std::bind(&my_function, "hello", std::placeholders::_1);
+f("world");
+
+// Good Idea
+auto f = [](const std::string &s) { return my_function("hello", s); };
+f("world");
+```

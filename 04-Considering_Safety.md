@@ -2,52 +2,85 @@
 
 
 ## Const as Much as Possible
-`const` tells the compiler that a variable or method is immutable. This helps the compiler optimize the code and helps the developer know if a function has a side effect. Also, using `const &` prevents the compiler from copying data unnecessarily. [Here](http://kotaku.com/454293019) are some comments on `const` from John Carmack.
+`const` tells the compiler that a variable or method is immutable. This helps the compiler optimize the code and helps the developer know if a function has a side effect. Also, using `const &` prevents the compiler from copying data unnecessarily. The  [comments on `const` from John Carmack](http://kotaku.com/454293019) are also a good read.
 
 ```cpp
 // Bad Idea
 class MyClass
 {
 public:
-  MyClass(std::string t_value)
-    : m_value(t_value)
-  {
-  }
-
-  std::string get_value()
-  {
-    return m_value;
-  }
-
-private:
-  std::string m_value;
-}
+  void do_something(int i);
+  void do_something(std::string str);
+};
 
 
 // Good Idea
 class MyClass
 {
 public:
-  MyClass(const std::string &t_value)
-    : m_value(t_value)
+  void do_something(const int i);
+  void do_something(const std::string &str);
+};
+
+```
+
+### Carefully Consider Your Return Types
+
+ * Getters
+   * Returning by `&` or `const &` can have significant performance savings when the normal use of the returned value is for observation
+   * Returning by value is better for thread safety and if the normal use of the returned value is to make a copy anyhow, there's no performance lost
+   * If your API uses covariant return types, you must return by `&` or `*`
+ * Temporaries and local values
+   * Always return by value.
+
+
+references: https://github.com/lefticus/cppbestpractices/issues/21 https://twitter.com/lefticus/status/635943577328095232 
+
+### Do not pass and return simple types by const ref 
+
+```cpp
+// Very Bad Idea
+class MyClass
+{
+public:
+  explicit MyClass(const int& t_int_value)
+    : m_int_value(t_int_value)
   {
   }
-
-  std::string get_value() const
+  
+  const int& get_int_value() const
   {
-    return m_value;
+    return m_int_value;
   }
 
 private:
-  std::string m_value;
+  int m_int_value;
 }
 ```
 
-### Consider Return By Value for Mutable Data, `const &` for Immutable
+Instead, pass and return simple types by value. If you plan not to change passed value, declare them as `const`, but not `const` refs:
 
-You don't want to have to pay a cost for copying the data when you don't need to, but you also don't want to have to safely return data in a threading scenario.
+```cpp
+// Good Idea
+class MyClass
+{
+public:
+  explicit MyClass(const int t_int_value)
+    : m_int_value(t_int_value)
+  {
+  }
+  
+  int get_int_value() const
+  {
+    return m_int_value;
+  }
 
-See also this discussion for more information: https://github.com/lefticus/cppbestpractices/issues/21
+private:
+  int m_int_value;
+}
+```
+
+Why? Because passing and returning by reference leads to pointer operations instead by much more faster passing values in processor registers.
 
 ## Avoid Raw Memory Access
 
@@ -68,7 +101,6 @@ auto mybuffer = std::make_unique<char[]>(length); // C++14
 auto mybuffer = std::unique_ptr<char[]>(new char[length]); // C++11
 
 // or for reference counted objects
-
 auto myobj = std::make_shared<MyClass>(); 
 
 // ...
@@ -88,17 +120,25 @@ Exceptions cannot be ignored. Return values, such as using `boost::optional`, ca
 Stroustrup, the original designer of C++, [makes this point](http://www.stroustrup.com/bs_faq2.html#exceptions-why) much better than I ever could.
 
 ## Use C++-style cast instead of C-style cast
-Use the C++-style cast(static\_cast<>, dynamic\_cast<> ...) instead of the C-style cast. The C++-style cast allows more compiler checks and is considerable safer.
+Use the C++-style cast (static\_cast<>, dynamic\_cast<> ...) instead of the C-style cast. The C++-style cast allows more compiler checks and is considerable safer.
 
 ```cpp
 // Bad Idea
 double x = getX();
 int i = (int) x;
 
-// Good Idea
+// Not a Bad Idea
 int i = static_cast<int>(x);
 ```
-Additionaly the C++ cast style is more visible and has the possiblity to search for.
+Additionally the C++ cast style is more visible and has the possibility to search for.
+
+But consider refactoring of program logic (for example, additional checking on overflow and underflow) if you need to cast `double` to `int`. Measure three times and cut 0.9999999999981 times.
+
+## Do not define a variadic function
+Variadic functions can accept a variable number of parameters. The probably best known example is printf(). You have the possibility to define this kind of functions by yourself but this is a possible security risk. The usage of variadic functions is not type safe and the wrong input parameters can cause a program termination with an undefined behavior. This undefined behavior can be exploited to a security problem.
+If you have the possibility to use a compiler that supports C++11, you can use variadic templates instead.
+
+[It is technically possible to make typesafe C-style variadic functions with some compilers](https://github.com/lefticus/cppbestpractices/issues/53)
 
 ## Additional Resources
 
