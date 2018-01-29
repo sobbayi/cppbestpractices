@@ -113,7 +113,9 @@ Consider using `-Weverything` and disabling the few warnings you need to on Clan
 
 ### MSVC
 
-`/W4 /W44640` - use these and consider the following
+`/permissive-` - [Enforces standards conformance](https://docs.microsoft.com/en-us/cpp/build/reference/permissive-standards-conformance).
+
+`/W4 /W14640` - use these and consider the following (see descriptions below)
 
  * `/W4` All reasonable warnings
  * `/w14242` 'identfier': conversion from 'type1' to 'type1', possible loss of data
@@ -192,6 +194,8 @@ Clang's analyzer's default options are good for the respective platform. It can 
 
 Also, [CodeChecker](https://github.com/Ericsson/CodeChecker) is available as a front-end to clang's static analysis.
 
+`clang-tidy` can be easily used with Visual Studio via the [Clang Power Tools](https://caphyon.github.io/clang-power-tools/) extension.
+
 ### MSVC's Static Analyzer
 
 Can be enabled with the `/analyze` [command line option](http://msdn.microsoft.com/en-us/library/ms173498.aspx). For now we will stick with the default options.
@@ -199,6 +203,10 @@ Can be enabled with the `/analyze` [command line option](http://msdn.microsoft.c
 ### Flint / Flint++
 
 [Flint](https://github.com/facebook/flint) and [Flint++](https://github.com/L2Program/FlintPlusPlus) are linters that analyze C++ code against Facebook's coding standards.
+
+### OCLint
+
+[OCLint](http://oclint.org/) is a free, libre and open source static code analysis tool for improving quality of C++ code in many different ways.
 
 ### ReSharper C++ / CLion
 
@@ -258,6 +266,10 @@ Both of these tools use coverage reporting to find new code execution paths and 
  * [american fuzzy lop](http://lcamtuf.coredump.cx/afl/)
  * [LibFuzzer](http://llvm.org/docs/LibFuzzer.html)
  * [KLEE](http://klee.github.io/) - Can be used to fuzz individual functions
+
+### Control Flow Guard
+
+MSVC's [Control Flow Guard](https://msdn.microsoft.com/en-us/library/windows/desktop/mt637065%28v=vs.85%29.aspx?f=255&MSPPError=-2147217396) adds high performance runtime security checks.
 
 ## Ignoring Warnings
 
